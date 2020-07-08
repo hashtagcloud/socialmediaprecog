@@ -6,7 +6,9 @@ import time
 from datetime import datetime
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('table')
+table = dynamodb.Table('tweets')
+sqs = boto3.client('sqs')
+queue_url = 'SLACK'
 
 KEYWORDS=  [' bubble closed', 'screw', 'closed']
 
@@ -39,22 +41,37 @@ def query_dynamo():
 
     return response
 
+def publish_alert_sqs(alert_threshold, alert_tweets):
+    print(f'REPORT : {alert_threshold} tweets alerting in period')
+    print(alert_tweets)
+    response = sqs.send_message(
+    QueueUrl=queue_url,
+    MessageAttributes={
+        'alert_threshold': {
+            'DataType': 'String',
+            'StringValue': str(alert_threshold)
+        }
+    },
+    MessageBody=(str(alert_tweets))
+    )
+
+    print(response['MessageId'])
+
 def analyse_records():
     alert_threshold = 0
     alert_tweets = []
-
     tweets = query_dynamo()
-    for tweet in tweets:
+    for tweet in tweets['Items']:
         tweet_body = tweet['tweet_body']
         for keyword in KEYWORDS:
-            print(keyword)
-            print(tweet_body)
             if keyword in tweet_body:
                 print(f'MATCH : found {keyword} in {tweet_body}')
                 alert_threshold += 1
                 alert_tweets.append({"tweet" : tweet_body, "tweeter" : '@Bloggs'})
+    
+    if alert_threshold > 0:
+        publish_alert_sqs(alert_threshold, alert_tweets)
 
 
 def lambda_handler(event, context):
     analyse_records()
-    #tell_slack()

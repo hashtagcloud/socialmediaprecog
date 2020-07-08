@@ -3,26 +3,31 @@ import boto3
 import slack
 import os
 
-SLACK_TOKEN = os.environ.get('SLACK_TOKEN','')
-SLACK_CHANNEL = os.environ.get('SLACK_CHANNEL','')
+#SLACK_TOKEN = os.environ.get('SLACK_TOKEN','')
+#SLACK_CHANNEL = os.environ.get('SLACK_CHANNEL','')
 
-def build_message_block(comment):
+SLACK_TOKEN = ''
+SLACK_CHANNEL = 'customertweets'
+
+def build_message_block(*args):
     message = [
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": comment
+                        "text": f'Tweet threshold met, found {args[0]} tweets <br> {args[1]}'
                     }
                     },
             ]
     return message
 
 def post_to_slack(*args):
-    build_message_block(comment)
     client = slack.WebClient(token=SLACK_TOKEN)
-    post_message = build_message_block(url, comment)
+    post_message = build_message_block(args[0], args[1])
     response = client.chat_postMessage(channel=SLACK_CHANNEL, blocks=post_message)
 
 def lambda_handler(event, context):
-    pass
+    for record in event['Records']:
+        tweet_body = record['body']
+        threshold = record['messageAttributes']['alert_threshold']['stringValue']
+        post_to_slack(threshold, tweet_body)

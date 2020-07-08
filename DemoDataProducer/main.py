@@ -21,11 +21,7 @@ def post_to_sqs(message):
     response = sqs.send_message(
     QueueUrl=queue_url,
     MessageAttributes={
-        'Test': {
-            'DataType': 'String',
-            'StringValue': message
-        },
-        'Time': {
+        'tweet_time': {
             'DataType': 'String',
             'StringValue': str(time.time_ns())
         },
